@@ -7,25 +7,22 @@ local addonName = ...
 local _
 
 local playerGUID = UnitGUID("player")
-local playerClass, englishClass = UnitClass("player")
+local _, playerClass = UnitClass("player")
 local playerName = UnitName("player")
 local playerRaidRole = nil
 local skullListSelector, crossListSelector, squareListSelector, moonListSelector, triangleListSelector, diamondListSelector, circleListSelector, starListSelector
+local healers1Table = nil
 
-
-SupremeRaid = LibStub("AceAddon-3.0"):NewAddon("SupremeRaid", "AceConsole-3.0", "AceEvent-3.0", "AceComm-3.0", "AceTimer-3.0")
-SupremeRaid.Version = GetAddOnMetadata(addonName, 'Version')
-SupremeRaid.Author = GetAddOnMetadata(addonName, "Author") 
 
 local raid = {}
-raid.warriors = {"Kage", "Drakoh"}
-raid.priests = {"Pio", "Chimble", "Macewindu"}
-raid.shamans = {"Taz", "HungrySalami", "Xpace"}
-raid.druids = {"Cow", "Maruki"}
-raid.mages = {"Ctang", "Murdera", "Cracktown"}
-raid.rogues = {"Cidolbones", "Aagrim"}
-raid.hunters = {"Satchmaux"}
-raid.warlocks = {"Majutsu", "Chapman"}
+raid.warriors = {}
+raid.priests = {}
+raid.shamans = {}
+raid.druids = {}
+raid.mages = {}
+raid.rogues = {}
+raid.hunters = {}
+raid.warlocks = {}
 raid.healers = {}
 raid.tanks = {}
 raid.tank1 = nil
@@ -48,11 +45,16 @@ raid.diamondPlayers = {}
 raid.circlePlayers = {}
 raid.starPlayers = {}
 
+SupremeRaid = LibStub("AceAddon-3.0"):NewAddon("SupremeRaid", "AceConsole-3.0", "AceEvent-3.0", "AceComm-3.0", "AceTimer-3.0")
+SupremeRaid.Version = GetAddOnMetadata(addonName, 'Version')
+SupremeRaid.Author = GetAddOnMetadata(addonName, "Author") 
+
+
 SupremeRaid.AnnouncementChannels = {
 	"say", "yell", "party", "raid", "raid_warning", "supremeheals"
 }
 
-SupremeRaid.ManaAnnouncementChannels = {
+SupremeRaid.DrinkAnnouncementChannels = {
 	"say", "yell", "party", "raid"
 }
 
@@ -60,21 +62,45 @@ SupremeRaid.ClassList = {
 	"priest", "shaman", "druid", "warrior", "hunter", "mage", "warlock", "rogue"
 }
 
-SupremeRaid.DebugPrintEnabled = true
-SupremeRaid.ManaAnnounceThreshold = 50
-SupremeRaid.selectedHealAnnounceChannel = "raid"
-SupremeRaid.selectedManaAnnounceChannel = "say"
-SupremeRaid.selectedTargetAnnounceChannel = "raid"
-SupremeRaid.DrinkingStatus = false
-SupremeRaid.DrinkingAnnounceStatus = true
 SupremeRaid.YourAssignedTank = nil
-SupremeRaid.ManaAnnounceMessage = "$pn - Drinking $mp% - $tn"
+SupremeRaid.YourAssignedTankIndex = nil
 SupremeRaid.SelectedClassesToFilter = {}
+local drinkingStatus = false
+
+local Default_Profile = {
+	profile = {	
+		DebugEnabled = false,
+		DrinkAnnouce = {
+			Enabled = false,
+			ChannelIndex = 1,
+			ManaThreshold = 50,
+			MessageTemplate = "$pn - Drinking $mp% - $tn",	
+		},
+		HealAssigment = {
+			ChannelIndex = 6,
+		},
+		TargetAssigment = {
+			ChannelIndex = 4,
+		},
+	}
+}
 
 function SupremeRaid:OnInitialize()
   -- Code that you want to run when the addon is first loaded goes here.
 	self.db = LibStub("AceDB-3.0"):New("SupremeRaidDB")
 	local acedb = LibStub:GetLibrary("AceDB-3.0")
+	self.db = acedb:New("SupremeRaidDB", Default_Profile)
+	-- self.db.RegisterCallback(self, "OnNewProfile", "ResetProfile")
+	--self.db.RegisterCallback(self, "OnProfileReset", "ResetProfile")
+	--self.db.RegisterCallback(self, "OnProfileChanged", "HandleProfileChanges")
+	--self.db.RegisterCallback(self, "OnProfileCopied", "HandleProfileChanges")
+	SupremeRaid:EnableDebugPrint(false);
+end
+
+function SupremeRaid:OnEnable()
+	if self.db.profile.optionA then
+		self.db.profile.playerName = UnitName("player")
+	end	
 end
 
 function SupremeRaid:SlashCommandHandler(input)
@@ -86,37 +112,74 @@ SupremeRaid:RegisterChatCommand("sup", "SlashCommandHandler")
 
 function SupremeRaid:OnUnitAuraEvent(eventName, unitTarget)
 	local message
-	if SupremeRaid.DrinkingAnnounceStatus then
+	if SupremeRaid:IsDrinkAnnounceEnabled() then
 		for i=1,40 do
 			local name = UnitBuff("player",i)
-			if (name == "Drink") then
-				local maxMana = UnitPowerMax("player")
-				local currentMana = UnitPower("player")
-				local percentMana = currentMana / maxMana * 100
-				if percentMana < SupremeRaid.ManaAnnounceThreshold then
-					message = SupremeRaid.ManaAnnounceMessage;
-					message = string.gsub(message, "$pn", playerName)
-					message = string.gsub(message, "$mp", tostring(math.floor(percentMana)))
-					if SupremeRaid.YourAssignedTank == nil then
-						SupremeRaid.YourAssignedTank = ""
+			if name == "Drink" then
+				if drinkingStatus == false then
+					local maxMana = UnitPowerMax("player")
+					local currentMana = UnitPower("player")
+					local percentMana = currentMana / maxMana * 100
+					if percentMana < SupremeRaid:GetDrinkAnnounceManaThreshold() then
+						message = SupremeRaid:GetDrinkAnnounceMessageTemplate()
+						message = string.gsub(message, "$pn", playerName)
+						message = string.gsub(message, "$mp", tostring(math.floor(percentMana)))
+						if SupremeRaid.YourAssignedTank == nil then
+							SupremeRaid.YourAssignedTank = ""						
+						end
+						message = string.gsub(message, "$tn", SupremeRaid.YourAssignedTank)
+						SupremeRaid:PrintDebug(message)
+						SupremeRaid:SendMessageToChat(message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetDrinkAnnounceChannelIndex()))
+						drinkingStatus  = true;
 					end
-					message = string.gsub(message, "$tn", SupremeRaid.YourAssignedTank)
-					SupremeRaid:PrintDebug(message)
-					SupremeRaid:SendMessageToChat(message, SupremeRaid.selectedManaAnnounceChannel)
-					SupremeRaid.DrinkingStatus  = true;
 				end
 				break
 			end
-			if(i == 40 and name ~= "Drink") then
-				if(SupremeRaid.DrinkingStatus  == true) then
-					message = "Finished Drinking"
-					SupremeRaid:SendMessageToChat(message, SupremeRaid.selectedManaAnnounceChannel)
-					SupremeRaid:PrintDebug(message)
-					SupremeRaid.DrinkingStatus  = false
-				end
+				-- Finished drinking but hasn't announced that yet
+			if(i == 40 and drinkingStatus  == true) then
+				message = "Finished Drinking"
+				SupremeRaid:SendMessageToChat(message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetDrinkAnnounceChannelIndex()))
+				SupremeRaid:PrintDebug(message)
+				drinkingStatus  = false
 			end
 		end
 	end
+end
+
+function SupremeRaid:GetChannelNameFromIndex(index)
+	return SupremeRaid.AnnouncementChannels[index]
+end
+
+function resetRaidInformation()
+	raid.warriors = {}
+	raid.priests = {}
+	raid.shamans = {}
+	raid.druids = {}
+	raid.mages = {}
+	raid.rogues = {}
+	raid.hunters = {}
+	raid.warlocks = {}
+	raid.healers = {}
+	raid.tanks = {}
+	raid.tank1 = nil
+	raid.tank1healers = {}
+	raid.tank2 = nil
+	raid.tank2healers = {}
+	raid.tank3 = nil
+	raid.tank3healers = {}
+	raid.tank4 = nil
+	raid.tank4healers = {}
+	raid.tank5 = nil
+	raid.tank5healers = {}
+	raid.filteredClassList = {}
+	raid.skullPlayers = {}
+	raid.crossPlayers = {}
+	raid.squarePlayers = {}
+	raid.moonPlayers = {}
+	raid.trianglePlayers = {}
+	raid.diamondPlayers = {}
+	raid.circlePlayers = {}
+	raid.starPlayers = {}
 end
 
 function SupremeRaid:GetRaidMembers()
@@ -216,6 +279,9 @@ end
 function tank1HealerCallback(self, event, key, checked)
 	tankHealerCallbackHandler(key,checked, raid.tank1healers)	
 	SupremeRaid:PrintDebug(table.concat(raid.tank1healers,", "))
+	for key, value in pairs(self) do
+    print(key, value)
+end
 end
 
 function tank2HealerCallback(self, event, key, checked)
@@ -264,21 +330,21 @@ function tank5Callback(self, event, key)
 end
 
 function healAssigmentAnnounceChannelSelectionCallBack(self, event, key)
-	SupremeRaid.selectedHealAnnounceChannel = SupremeRaid.AnnouncementChannels[key]
-	SupremeRaid:PrintDebug(SupremeRaid.selectedHealAnnounceChannel)
+	SupremeRaid:SetHealAssigmentAnnounceChannelIndex(key)
+	SupremeRaid:PrintDebug(SupremeRaid:GetHealAssigmentAnnounceChannelIndex())
 end
 
 function targetAssigmentAnnounceChannelSelectionCallBack(self, event, key)
-	SupremeRaid.selectedTargetAnnounceChannel = SupremeRaid.AnnouncementChannels[key]
-	SupremeRaid:PrintDebug(SupremeRaid.selectedTargetAnnounceChannel)
+	SupremeRaid:SetTargetAssingmentAnnounceChannelIndex(key)
+	SupremeRaid:PrintDebug(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex())
 end
 
-function manaAnnounceChannelSelectionCallBack(self, event, key)
-	SupremeRaid.selectedManaAnnounceChannel = SupremeRaid.ManaAnnouncementChannels[key]
-	SupremeRaid:PrintDebug(SupremeRaid.selectedManaAnnounceChannel)
+function drinkAnnounceChannelSelectionCallBack(self, event, key)
+	SupremeRaid:SetDrinkAnnounceChannelIndex(key)
+	SupremeRaid:PrintDebug(SupremeRaid:GetDrinkAnnounceChannelIndex())
 end
 
-function manaAnnounceEditBoxCallBack(self, event, text)
+function drinkAnnounceEditBoxCallBack(self, event, text)
 	
 	local num = tonumber(text)
 	if num == nil then
@@ -288,24 +354,25 @@ function manaAnnounceEditBoxCallBack(self, event, text)
 	elseif num < 0 then	
 		SupremeRaid:Print("Minimum 0")
 	else 
-		SupremeRaid.ManaAnnounceThreshold = num
-		SupremeRaid:PrintDebug(SupremeRaid.ManaAnnounceThreshold)
+		SupremeRaid:SetDrinkAnnounceManaThreshold(num)
+		SupremeRaid:PrintDebug(SupremeRaid:GetDrinkAnnounceManaThreshold())
 	end
 end
 
 function DrinkingAnnounceCheckBoxCallBack(self, event, value)	
-	SupremeRaid.DrinkingAnnounceStatus = value
-	SupremeRaid:PrintDebug(SupremeRaid.DrinkingAnnounceStatus)
+	SupremeRaid:EnableDrinkAnnounce(value)
+	SupremeRaid:PrintDebug(SupremeRaid:IsDrinkAnnounceEnabled())
 end
 
 function assignedTankCallback(self, event, key)	
 	SupremeRaid.YourAssignedTank = raid.tanks[key]
+	SupremeRaid.YourAssignedTankIndex = key
 	SupremeRaid:PrintDebug(SupremeRaid.YourAssignedTank)
 end
 
 function announceMessageEditBoxCallBack(self, event, text)	
-	SupremeRaid.ManaAnnounceMessage = text
-	SupremeRaid:PrintDebug(SupremeRaid.ManaAnnounceMessage)
+	SupremeRaid:SetDrinkAnnounceMessageTemplate(text)
+	SupremeRaid:PrintDebug(SupremeRaid:GetDrinkAnnounceMessageTemplate())
 end
 
 function announceHealAssigment() 
@@ -319,7 +386,7 @@ function announceHealAssigment()
 	end
 	if tank1Message ~= nil then
 		SupremeRaid:PrintDebug(tank1Message)
-		SupremeRaid:SendMessageToChat(tank1Message, SupremeRaid.selectedHealAnnounceChannel)
+		SupremeRaid:SendMessageToChat(tank1Message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
 	end
 	if raid.tank2 == nil then
 		SupremeRaid:Print("Assign Tank 2")
@@ -330,7 +397,7 @@ function announceHealAssigment()
 	end
 	if tank2Message ~= nil then
 		SupremeRaid:PrintDebug(tank2Message)
-		SupremeRaid:SendMessageToChat(tank2Message, SupremeRaid.selectedHealAnnounceChannel)
+		SupremeRaid:SendMessageToChat(tank2Message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
 	end
 	if raid.tank3 == nil then
 		SupremeRaid:Print("Assign Tank 3")
@@ -341,7 +408,7 @@ function announceHealAssigment()
 	end
 	if tank3Message ~= nil then
 		SupremeRaid:PrintDebug(tank3Message)
-		SupremeRaid:SendMessageToChat(tank3Message, SupremeRaid.selectedHealAnnounceChannel)
+		SupremeRaid:SendMessageToChat(tank3Message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
 	end
 	if raid.tank4 == nil then
 		SupremeRaid:Print("Assign Tank 4")
@@ -352,7 +419,7 @@ function announceHealAssigment()
 	end	
 	if tank4Message ~= nil then
 		SupremeRaid:PrintDebug(tank4Message)
-		SupremeRaid:SendMessageToChat(tank4Message, SupremeRaid.selectedHealAnnounceChannel)
+		SupremeRaid:SendMessageToChat(tank4Message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
 	end
 	if raid.tank5 == nil then
 		SupremeRaid:Print("Assign Tank 5")
@@ -363,7 +430,7 @@ function announceHealAssigment()
 	end
 	if tank5Message ~= nil then
 		SupremeRaid:PrintDebug(tank5Message)
-		SupremeRaid:SendMessageToChat(tank5Message, SupremeRaid.selectedHealAnnounceChannel)	
+		SupremeRaid:SendMessageToChat(tank5Message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))	
 	end
 end
 
@@ -376,7 +443,7 @@ function announceTargetAssigment()
 	end
 	if skullMessage ~= nil then
 		SupremeRaid:PrintDebug(skullMessage)
-		SupremeRaid:SendMessageToChat(skullMessage, SupremeRaid.selectedTargetAnnounceChannel)
+		SupremeRaid:SendMessageToChat(skullMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))	
 	end
 	if raid.crossPlayers == nil  or #raid.crossPlayers == 0 then
 		SupremeRaid:Print("Assign Players to CROSS")
@@ -385,7 +452,7 @@ function announceTargetAssigment()
 	end
 	if crossMessage ~= nil then
 		SupremeRaid:PrintDebug(crossMessage)
-		SupremeRaid:SendMessageToChat(crossMessage, SupremeRaid.selectedTargetAnnounceChannel)
+		SupremeRaid:SendMessageToChat(crossMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.squarePlayers == nil or #raid.squarePlayers == 0 then
 		SupremeRaid:Print("Assign Players to SQUARE")
@@ -394,7 +461,7 @@ function announceTargetAssigment()
 	end
 	if squareMessage ~= nil then
 		SupremeRaid:PrintDebug(squareMessage)
-		SupremeRaid:SendMessageToChat(squareMessage, SupremeRaid.selectedTargetAnnounceChannel)
+		SupremeRaid:SendMessageToChat(squareMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.moonPlayers == nil or #raid.moonPlayers == 0 then
 		SupremeRaid:Print("Assign Players to MOON")
@@ -403,7 +470,7 @@ function announceTargetAssigment()
 	end
 	if moonMessage ~= nil then
 		SupremeRaid:PrintDebug(moonMessage)
-		SupremeRaid:SendMessageToChat(moonMessage, SupremeRaid.selectedTargetAnnounceChannel)
+		SupremeRaid:SendMessageToChat(moonMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.trianglePlayers == nil or #raid.trianglePlayers == 0 then
 		SupremeRaid:Print("Assign Players to TRIANGLE")
@@ -412,7 +479,7 @@ function announceTargetAssigment()
 	end
 	if triangleMessage ~= nil then
 		SupremeRaid:PrintDebug(triangleMessage)
-		SupremeRaid:SendMessageToChat(triangleMessage, SupremeRaid.selectedTargetAnnounceChannel)
+		SupremeRaid:SendMessageToChat(triangleMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.diamondPlayers == nil or #raid.diamondPlayers == 0 then
 		SupremeRaid:Print("Assign Players to DIAMOND")
@@ -421,7 +488,7 @@ function announceTargetAssigment()
 	end
 	if diamondMessage ~= nil then
 		SupremeRaid:PrintDebug(diamondMessage)
-		SupremeRaid:SendMessageToChat(diamondMessage, SupremeRaid.selectedTargetAnnounceChannel)
+		SupremeRaid:SendMessageToChat(diamondMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.circlePlayers == nil or #raid.circlePlayers == 0 then
 		SupremeRaid:Print("Assign Players to CIRCLE")
@@ -430,7 +497,7 @@ function announceTargetAssigment()
 	end
 	if circleMessage ~= nil  then
 		SupremeRaid:PrintDebug(circleMessage)
-		SupremeRaid:SendMessageToChat(circleMessage, SupremeRaid.selectedTargetAnnounceChannel)
+		SupremeRaid:SendMessageToChat(circleMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.starPlayers == nil or #raid.starPlayers == 0 then
 		SupremeRaid:Print("Assign Players to STAR")
@@ -439,7 +506,7 @@ function announceTargetAssigment()
 	end
 	if starMessage ~= nil then
 		SupremeRaid:PrintDebug(starMessage)
-		SupremeRaid:SendMessageToChat(starMessage, SupremeRaid.selectedTargetAnnounceChannel)
+		SupremeRaid:SendMessageToChat(starMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 end
 
@@ -501,7 +568,7 @@ local function DrawGroup1(container)
 	
 	local disableCheckBox = AceGUI:Create("CheckBox")
 	disableCheckBox:SetLabel("Enabled")
-	disableCheckBox:SetValue(SupremeRaid.DrinkingAnnounceStatus)
+	disableCheckBox:SetValue(SupremeRaid:IsDrinkAnnounceEnabled())
 	disableCheckBox:SetCallback("OnValueChanged", DrinkingAnnounceCheckBoxCallBack)
 	container:AddChild(disableCheckBox)
 	  
@@ -509,17 +576,17 @@ local function DrawGroup1(container)
 	announceChannelSelector:SetLabel("Announce your drinking status to:")
 	announceChannelSelector:SetFullWidth(true)
 	announceChannelSelector:SetText("Select Channel")
-	announceChannelSelector:SetList(SupremeRaid.ManaAnnouncementChannels)
-	announceChannelSelector:SetValue(1)
-	announceChannelSelector:SetCallback("OnValueChanged", manaAnnounceChannelSelectionCallBack)
+	announceChannelSelector:SetList(SupremeRaid.DrinkAnnouncementChannels)
+	announceChannelSelector:SetValue(SupremeRaid:GetDrinkAnnounceChannelIndex())
+	announceChannelSelector:SetCallback("OnValueChanged", drinkAnnounceChannelSelectionCallBack)
 	container:AddChild(announceChannelSelector)
 	
 	local manaThresholdEditBox = AceGUI:Create("EditBox")
 	manaThresholdEditBox:SetFullWidth(true)
 	manaThresholdEditBox:SetLabel("You will only announce if your mana is over %")
 	manaThresholdEditBox:SetMaxLetters(3)
-	manaThresholdEditBox:SetCallback("OnEnterPressed", manaAnnounceEditBoxCallBack)
-	manaThresholdEditBox:SetText(tostring(SupremeRaid.ManaAnnounceThreshold))
+	manaThresholdEditBox:SetCallback("OnEnterPressed", drinkAnnounceEditBoxCallBack)
+	manaThresholdEditBox:SetText(tostring(SupremeRaid:GetDrinkAnnounceManaThreshold()))
 	container:AddChild(manaThresholdEditBox)
 	
 	local tankSelector = AceGUI:Create("Dropdown")
@@ -527,6 +594,7 @@ local function DrawGroup1(container)
 	tankSelector:SetRelativeWidth(1)
 	tankSelector:SetText("Select Your Assigned Tank")	
 	tankSelector:SetList(raid.tanks)
+	tankSelector:SetValue(SupremeRaid.YourAssignedTankIndex)
 	tankSelector:SetCallback("OnValueChanged", assignedTankCallback)
 	container:AddChild(tankSelector)
 	
@@ -535,7 +603,7 @@ local function DrawGroup1(container)
 	announceMessageEditBox:SetLabel("Your announce message template: ")
 	announceMessageEditBox:SetMaxLetters(50)
 	announceMessageEditBox:SetCallback("OnEnterPressed", announceMessageEditBoxCallBack)
-	announceMessageEditBox:SetText(SupremeRaid.ManaAnnounceMessage)
+	announceMessageEditBox:SetText(SupremeRaid:GetDrinkAnnounceMessageTemplate())
 	container:AddChild(announceMessageEditBox)
 	
 	local messageDescriptionText = AceGUI:Create("Label")
@@ -640,7 +708,7 @@ local function DrawGroup2(container)
 	announceChannelSelector:SetRelativeWidth(0.5)
 	announceChannelSelector:SetText("Select Channel")
 	announceChannelSelector:SetList(SupremeRaid.AnnouncementChannels)
-	announceChannelSelector:SetValue(4)
+	announceChannelSelector:SetValue(SupremeRaid:GetHealAssigmentAnnounceChannelIndex())
 	announceChannelSelector:SetCallback("OnValueChanged", healAssigmentAnnounceChannelSelectionCallBack)
 	container:AddChild(announceChannelSelector)
 	
@@ -666,7 +734,7 @@ local function DrawGroup3(container)
 	container:AddChild(classFilterSelector)
 	
 	local skullText = AceGUI:Create("Label")
-	skullText:SetText("SKULL")
+	skullText:SetText("|cffffffffSKULL|r")
 	skullText:SetRelativeWidth(0.2)
 	container:AddChild(skullText)
 	
@@ -680,7 +748,7 @@ local function DrawGroup3(container)
 	container:AddChild(skullListSelector)
 	
 	local crossText = AceGUI:Create("Label")
-	crossText:SetText("CROSS")
+	crossText:SetText("|cffFF0000CROSS|r")
 	crossText:SetRelativeWidth(0.2)
 	container:AddChild(crossText)
 	
@@ -693,7 +761,7 @@ local function DrawGroup3(container)
 	container:AddChild(crossListSelector)
 	
 	local squareText = AceGUI:Create("Label")
-	squareText:SetText("SQUARE")
+	squareText:SetText("|cff00BFFFSQUARE|r")
 	squareText:SetRelativeWidth(0.2)
 	container:AddChild(squareText)
 	
@@ -706,7 +774,7 @@ local function DrawGroup3(container)
 	container:AddChild(squareListSelector)
 	
 	local moonText = AceGUI:Create("Label")
-	moonText:SetText("MOON")
+	moonText:SetText("|cffc7c7cfMOON|r")
 	moonText:SetRelativeWidth(0.2)
 	container:AddChild(moonText)
 	
@@ -719,7 +787,7 @@ local function DrawGroup3(container)
 	container:AddChild(moonListSelector)
 	
 	local triangleText = AceGUI:Create("Label")
-	triangleText:SetText("TRIANGLE")
+	triangleText:SetText("|cff7CFC00TRIANGLE|r")
 	triangleText:SetRelativeWidth(0.2)
 	container:AddChild(triangleText)
 	
@@ -732,7 +800,7 @@ local function DrawGroup3(container)
 	container:AddChild(triangleListSelector)
 	
 	local diamondText = AceGUI:Create("Label")
-	diamondText:SetText("DIAMOND")
+	diamondText:SetText("|cffff00ffDIAMOND|r")
 	diamondText:SetRelativeWidth(0.2)
 	container:AddChild(diamondText)
 	
@@ -745,7 +813,7 @@ local function DrawGroup3(container)
 	container:AddChild(diamondListSelector)
 	
 	local circleText = AceGUI:Create("Label")
-	circleText:SetText("CIRCLE")
+	circleText:SetText("|cffff8000CIRCLE|r")
 	circleText:SetRelativeWidth(0.2)
 	container:AddChild(circleText)
 	
@@ -758,7 +826,7 @@ local function DrawGroup3(container)
 	container:AddChild(circleListSelector)
 	
 	local starText = AceGUI:Create("Label")
-	starText:SetText("STAR")
+	starText:SetText("|cffffff00STAR|r")
 	starText:SetRelativeWidth(0.2)
 	container:AddChild(starText)
 	
@@ -771,11 +839,11 @@ local function DrawGroup3(container)
 	container:AddChild(starListSelector)
 		
 	local announceChannelSelector = AceGUI:Create("Dropdown")
-	announceChannelSelector:SetLabel("Announce Heal Assignment to:")
+	announceChannelSelector:SetLabel("Announce Target Assignment to:")
 	announceChannelSelector:SetRelativeWidth(0.5)
 	announceChannelSelector:SetText("Select Channel")
 	announceChannelSelector:SetList(SupremeRaid.AnnouncementChannels)
-	announceChannelSelector:SetValue(4)
+	announceChannelSelector:SetValue(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex())
 	announceChannelSelector:SetCallback("OnValueChanged", targetAssigmentAnnounceChannelSelectionCallBack)
 	container:AddChild(announceChannelSelector)
 	
@@ -799,6 +867,7 @@ local function SelectGroup(container, event, group)
 end
 
 function SupremeRaid:CreateFrame()
+	resetRaidInformation()
 	SupremeRaid:GetRaidMembers()
 	raid.tanks = mergeTables(raid.warriors, raid.druids)
 	raid.healers = mergeTables(raid.priests, raid.druids, raid.shamans)
@@ -816,11 +885,11 @@ function SupremeRaid:CreateFrame()
 	tab:SetLayout("Flow")
 	-- Register callback
 	tab:SetCallback("OnGroupSelected", SelectGroup)
-	if playerClass == "Priest" or playerClass == "Shaman" or playerClass == "Druid" then
-		table.insert(tabs, {text="Settings", value="tab1"})
+	-- if playerClass == "Priest" or playerClass == "Shaman" or playerClass == "Druid" then
+		table.insert(tabs, {text="Drink Announcement", value="tab1"})
 		tab:SetTabs(tabs)
 		tab:SelectTab("tab1")
-	end
+	-- end
 	if playerRole == nil or playerRole == "maintank" or playerRole == "mainassist" then	
 		table.insert(tabs, {text="Heal Assigment", value="tab2"})
 		table.insert(tabs, {text="Target Assigment", value="tab3"})
@@ -861,10 +930,65 @@ function SupremeRaid:SendMessageToChat(message, channelName)
 end
 
 function SupremeRaid:PrintDebug(...)
-	if SupremeRaid.DebugPrintEnabled ~= true then
-		return
-	end
-	SupremeRaid:Print(...)
+	if SupremeRaid.IsDebugPrintEnabled() then
+		SupremeRaid:Print(...) 
+	end	
+end
+
+function SupremeRaid:IsDebugPrintEnabled()
+	return SupremeRaid.db.profile.DebugEnabled
+end
+
+function SupremeRaid:EnableDebugPrint(value)
+	SupremeRaid.db.profile.DebugEnabled = value
+end
+
+function SupremeRaid:EnableDrinkAnnounce(value)
+	SupremeRaid.db.profile.DrinkAnnouce.Enabled = value
+end
+
+function SupremeRaid:IsDrinkAnnounceEnabled()
+	return SupremeRaid.db.profile.DrinkAnnouce.Enabled
+end
+
+function SupremeRaid:SetDrinkAnnounceManaThreshold(value)
+	SupremeRaid.db.profile.DrinkAnnouce.ManaThreshold = value
+end
+
+function SupremeRaid:GetDrinkAnnounceManaThreshold()
+	return SupremeRaid.db.profile.DrinkAnnouce.ManaThreshold
+end
+
+function SupremeRaid:SetDrinkAnnounceMessageTemplate(value)
+	SupremeRaid.db.profile.DrinkAnnouce.MessageTemplate = value
+end
+
+function SupremeRaid:GetDrinkAnnounceMessageTemplate()
+	return SupremeRaid.db.profile.DrinkAnnouce.MessageTemplate
+end
+
+function SupremeRaid:SetHealAssigmentAnnounceChannelIndex(value)
+	SupremeRaid.db.profile.HealAssigment.ChannelIndex = value
+end
+
+function SupremeRaid:GetHealAssigmentAnnounceChannelIndex()
+	return SupremeRaid.db.profile.HealAssigment.ChannelIndex
+end
+
+function SupremeRaid:SetDrinkAnnounceChannelIndex(value)
+	SupremeRaid.db.profile.DrinkAnnouce.ChannelIndex = value
+end
+
+function SupremeRaid:GetDrinkAnnounceChannelIndex()
+	return SupremeRaid.db.profile.DrinkAnnouce.ChannelIndex
+end
+
+function SupremeRaid:SetTargetAssingmentAnnounceChannelIndex(value)
+	SupremeRaid.db.profile.TargetAssigment.ChannelIndex = value
+end
+
+function SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()
+	return SupremeRaid.db.profile.TargetAssigment.ChannelIndex
 end
 
 SupremeRaid:RegisterEvent("UNIT_AURA", "OnUnitAuraEvent")
