@@ -1,0 +1,13 @@
+﻿## Interface: 11303
+## Title: SupremeHeals
+## Author: Pio (US-Sulfuras)
+## Version: 0.0.1
+## OptionalDeps:  Ace3, LibSharedMedia-3.0, 
+## SavedVariables: SupremeHealsDB
+## SavedVariablesPerCharacter: SupremeHealsPerCharDB
+
+#@no-lib-strip@
+Embeds.xml
+#@end-no-lib-strip@
+
+SupremeHeals.lua
