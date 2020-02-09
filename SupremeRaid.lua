@@ -12,17 +12,17 @@ local playerName = UnitName("player")
 local playerRaidRole = nil
 local skullListSelector, crossListSelector, squareListSelector, moonListSelector, triangleListSelector, diamondListSelector, circleListSelector, starListSelector
 local healers1Table = nil
-
+local selectedTab = nil
 
 local raid = {}
-raid.warriors = {}
-raid.priests = {}
-raid.shamans = {}
-raid.druids = {}
-raid.mages = {}
-raid.rogues = {}
-raid.hunters = {}
-raid.warlocks = {}
+raid.warriors = {"Kagedorf", "Drakoh"}
+raid.priests = {"Pio", "Chimble", "Macewindu"}
+raid.shamans = {"Xpace", "HungrySalami"}
+raid.druids = {"Cowhileonard", "Dwigthcoward"}
+raid.mages = {"Rekks", "Murdera"}
+raid.rogues = {"Aagrim", "Cidolbones"}
+raid.hunters = {"Satchmaux", "Servicer"}
+raid.warlocks = {"Majutsu", "Lowkey"}
 raid.healers = {}
 raid.tanks = {}
 raid.tank1 = nil
@@ -856,18 +856,21 @@ end
 
 -- Callback function for OnGroupSelected
 local function SelectGroup(container, event, group)
-   container:ReleaseChildren()
-   if group == "tab1" then
-      DrawGroup1(container)
-   elseif group == "tab2" then
-      DrawGroup2(container)
-   elseif group == "tab3" then
-      DrawGroup3(container)
-   end
+	container:ReleaseChildren()
+	if group == "tab1" then
+		selectedTab = "tab1"
+		DrawGroup1(container)
+	elseif group == "tab2" then
+		selectedTab = "tab2"
+		DrawGroup2(container)
+	elseif group == "tab3" then
+		selectedTab = "tab3"
+		DrawGroup3(container)
+	end
 end
 
 function SupremeRaid:CreateFrame()
-	resetRaidInformation()
+	-- resetRaidInformation()
 	SupremeRaid:GetRaidMembers()
 	raid.tanks = mergeTables(raid.warriors, raid.druids)
 	raid.healers = mergeTables(raid.priests, raid.druids, raid.shamans)
@@ -888,15 +891,20 @@ function SupremeRaid:CreateFrame()
 	-- if playerClass == "Priest" or playerClass == "Shaman" or playerClass == "Druid" then
 		table.insert(tabs, {text="Drink Announcement", value="tab1"})
 		tab:SetTabs(tabs)
-		tab:SelectTab("tab1")
+		if selectedTab == nil then 
+			selectedTab = "tab1"
+		end
 	-- end
 	if playerRole == nil or playerRole == "maintank" or playerRole == "mainassist" then	
 		table.insert(tabs, {text="Heal Assigment", value="tab2"})
 		table.insert(tabs, {text="Target Assigment", value="tab3"})
 		tab:SetTabs(tabs)
-		tab:SelectTab("tab2")
+		if selectedTab == nil then 
+			selectedTab = "tab2"
+		end
 	end
 	-- Set initial Tab (this will fire the OnGroupSelected callback)
+		tab:SelectTab(selectedTab)
 	-- add to the frame container
 	frame:AddChild(tab)	
 end
