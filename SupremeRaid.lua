@@ -85,6 +85,13 @@ local Default_Profile = {
 	}
 }
 
+SupremeRaid:RegisterChatCommand("super", "MySlashProcessorFunc")
+
+function SupremeRaid:MySlashProcessorFunc(input)
+	table.insert(raid.warriors, input)
+  -- Process the slash command ('input' contains whatever follows the slash command)
+end
+
 function SupremeRaid:OnInitialize()
   -- Code that you want to run when the addon is first loaded goes here.
 	self.db = LibStub("AceDB-3.0"):New("SupremeRaidDB")
@@ -280,8 +287,12 @@ function tank1HealerCallback(self, event, key, checked)
 	tankHealerCallbackHandler(key,checked, raid.tank1healers)	
 	SupremeRaid:PrintDebug(table.concat(raid.tank1healers,", "))
 	for key, value in pairs(self) do
-    print(key, value)
-end
+		print(key, value)
+	end
+	SupremeRaid:Print("next *********************  table")
+	for key, value in pairs(self["userdata"]) do
+		print(key, value)
+	end
 end
 
 function tank2HealerCallback(self, event, key, checked)
@@ -626,6 +637,9 @@ local function DrawGroup2(container)
 	healerSelector1:SetMultiselect(true)
 	healerSelector1:SetCallback("OnValueChanged", tank1HealerCallback)
 	container:AddChild(healerSelector1)
+	for i=1, #raid.tank1healers do
+		healerSelector1:SetValue(i)
+	end
 
 	local tankSelector1 = AceGUI:Create("Dropdown")
 	tankSelector1:SetLabel("Tank #1")
