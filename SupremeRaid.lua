@@ -16,7 +16,7 @@ local selectedTab = "tab2"
 
 local raid = {}
 raid.members = {}
-raid.warriors = {"Kagedorf", "Drakoh"}
+--[[raid.warriors = {"Kagedorf", "Drakoh"}
 raid.priests = {"Pio", "Chimble", "Macewindu"}
 raid.shamans = {"Xpace", "HungrySalami"}
 raid.druids = {"Cowhileonard", "Dwigthcoward"}
@@ -27,7 +27,6 @@ raid.warlocks = {"Majutsu", "Lowkey"}
 raid.healers = {}
 raid.tanks = {}
 raid.tank1 = nil
-raid.tank1healers = {}
 raid.tank2 = nil
 raid.tank2healers = {}
 raid.tank3 = nil
@@ -45,6 +44,7 @@ raid.trianglePlayers = {}
 raid.diamondPlayers = {}
 raid.circlePlayers = {}
 raid.starPlayers = {}
+]]
 
 local raid1 = {}
 raid1.healers = {}
@@ -54,6 +54,18 @@ function addmember(name,class)
   local member = {}
   member.name = name
   member.class = class
+  member.tank1 = false
+  member.tank2 = false
+  member.tank3 = false
+  member.tank4 = false
+  member.tank5 = false
+  member.tank1healer = false
+  member.tank2healer = false
+  member.tank3healer = false
+  member.tank4healer = false
+  member.tank5healer = false
+  member.targetskull = false
+  member.targetcross = false
   table.insert(raid1.members, member)
 end
 
@@ -66,7 +78,6 @@ addmember("Hungrysalami", "shaman")
 addmember("Cow", "druid")
 addmember("Maruki", "druid")
 addmember("Murdera", "mage")
-table.insert(raid1.members, member)
 
 
 function tablePrint (tbl, indent)
@@ -83,6 +94,7 @@ function tablePrint (tbl, indent)
     end
   end
 end
+tablePrint(raid)
 
 SupremeRaid = LibStub("AceAddon-3.0"):NewAddon("SupremeRaid", "AceConsole-3.0", "AceEvent-3.0", "AceComm-3.0", "AceTimer-3.0")
 SupremeRaid.Version = GetAddOnMetadata(addonName, 'Version')
@@ -212,12 +224,16 @@ function SupremeRaid:GetRaidMembers()
 			member.name = name
 			member.class = class
 			member.role = role
-			member.rank = rank
+			member.tank1healer = false
+			member.tank2healer = false
+			member.tank3healer = false
+			member.tank4healer = false
+			member.tank5healer = false
 		if name == playerName then
 			playerRaidRole = role;
 		end
 		table.insert(raid.members, member)
-		if (class == "Warrior") then
+		--[[if (class == "Warrior") then
 			table.insert(raid.warriors, name)
 		elseif (class == "Priest") then
 			table.insert(raid.priests, name)
@@ -234,14 +250,15 @@ function SupremeRaid:GetRaidMembers()
 		elseif (class == "Hunter") then
 			table.insert(raid.hunters, name)
 		end
+		]]
 	end
 end
 
 function SupremeRaid:GetClassMembersFromRaid(class)
 	local memberTable = {}
-	for i=1,#raid1.members do
-		if(raid1.members[i].class == class) then
-			table.insert(memberTable, raid1.members[i])
+	for i=1,#raid.members do
+		if(raid.members[i].class == class) then
+			table.insert(memberTable, raid.members[i])
 		end
 	end
 	return memberTable
@@ -250,16 +267,16 @@ end
 function SupremeRaid:GetCombatRoleMembersFromRaid(combatRole)
 	local combatRoleTable = {}
 	if(combatRole == "healer") then
-		for i=1,#raid1.members do
-			if(raid1.members[i].class == "priest" or raid1.members[i].class == "shaman" or raid1.members[i].class == "druid") then
-				table.insert(combatRoleTable, raid1.members[i])
+		for i=1,#raid.members do
+			if(raid.members[i].class == "priest" or raid.members[i].class == "shaman" or raid.members[i].class == "druid") then
+				table.insert(combatRoleTable, raid.members[i])
 			end
 		end
 	end
 	if(combatRole == "tank") then
-		for i=1,#raid1.members do
-			if(raid1.members[i].class == "warrior" or raid1.members[i].class == "druid") then
-				table.insert(combatRoleTable, raid1.members[i])
+		for i=1,#raid.members do
+			if(raid.members[i].class == "warrior" or raid.members[i].class == "druid") then
+				table.insert(combatRoleTable, raid.members[i])
 			end
 		end
 	end
@@ -274,51 +291,6 @@ function DropDownList(mainList)
   return simpleList
 end
 
-function resetRaidInformation()
-	raid.warriors = {}
-	raid.priests = {}
-	raid.shamans = {}
-	raid.druids = {}
-	raid.mages = {}
-	raid.rogues = {}
-	raid.hunters = {}
-	raid.warlocks = {}
-	raid.healers = {}
-	raid.tanks = {}
-	raid.tank1 = nil
-	raid.tank1healers = {}
-	raid.tank2 = nil
-	raid.tank2healers = {}
-	raid.tank3 = nil
-	raid.tank3healers = {}
-	raid.tank4 = nil
-	raid.tank4healers = {}
-	raid.tank5 = nil
-	raid.tank5healers = {}
-	raid.filteredClassList = {}
-	raid.skullPlayers = {}
-	raid.crossPlayers = {}
-	raid.squarePlayers = {}
-	raid.moonPlayers = {}
-	raid.trianglePlayers = {}
-	raid.diamondPlayers = {}
-	raid.circlePlayers = {}
-	raid.starPlayers = {}
-end
-
-function tankHealerCallbackHandler(key, checked, healergroup)
-	if(checked) then
-		table.insert(healergroup, raid.healers[key])
-	else
-		for i=1,#healergroup do
-			if raid.healers[key] == healergroup[i] then
-				table.remove(healergroup, i)
-				break
-			end
-		end
-	end
-end
-
 function targetPlayerSelectorCallBackHandler(key, checked, selectedGroup)
 	if(checked) then
 		table.insert(selectedGroup, raid.filteredClassList[key])
@@ -331,8 +303,6 @@ function targetPlayerSelectorCallBackHandler(key, checked, selectedGroup)
 		end
 	end
 end
-
-
 
 function skullSelectorCallback(self, event, key, checked)
 	targetPlayerSelectorCallBackHandler(key,checked, raid.skullPlayers)
@@ -375,55 +345,88 @@ function starSelectorCallback(self, event, key, checked)
 end
 
 function tank1HealerCallback(self, event, key, checked)
-	tankHealerCallbackHandler(key,checked, raid.tank1healers)
-	SupremeRaid:PrintDebug(table.concat(raid.tank1healers,", "))
-
-
+	for i=1, #raid.members do
+		if raid.healers[key].name == raid.members[i].name then
+			raid.members[i].tank1healer = checked			
+		end
+	end	
 end
 
 function tank2HealerCallback(self, event, key, checked)
-	tankHealerCallbackHandler(key,checked, raid.tank2healers)
-	SupremeRaid:PrintDebug(table.concat(raid.tank2healers,", "))
+	for i=1, #raid.members do
+		if raid.healers[key].name == raid.members[i].name then
+			raid.members[i].tank2healer = checked			
+		end
+	end	
 end
 
 function tank3HealerCallback(self, event, key, checked)
-	tankHealerCallbackHandler(key,checked, raid.tank3healers)
-	SupremeRaid:PrintDebug(table.concat(raid.tank3healers,", "))
+	for i=1, #raid.members do
+		if raid.healers[key].name == raid.members[i].name then
+			raid.members[i].tank3healer = checked			
+		end
+	end	
 end
 
 function tank4HealerCallback(self, event, key, checked)
-	tankHealerCallbackHandler(key,checked, raid.tank4healers)
-	SupremeRaid:PrintDebug(table.concat(raid.tank4healers,", "))
+	for i=1, #raid.members do
+		if raid.healers[key].name == raid.members[i].name then
+			raid.members[i].tank4healer = checked			
+		end
+	end	
 end
 
 function tank5HealerCallback(self, event, key, checked)
-	tankHealerCallbackHandler(key,checked, raid.tank5healers)
-	SupremeRaid:PrintDebug(table.concat(raid.tank5healers,", "))
+	for i=1, #raid.members do
+		if raid.healers[key].name == raid.members[i].name then
+			raid.members[i].tank5healer = checked			
+		end
+	end	
 end
 
 function tank1Callback(self, event, key, checked)
-	raid.tank1 = raid.tanks[key]
-	SupremeRaid:PrintDebug(raid.tank1)
+	for i=1, #raid.members do
+		raid.members[i].tank1 = false
+		if raid.tanks[key].name == raid.members[i].name then
+			raid.members[i].tank1 = true
+		end
+	end	
 end
 
 function tank2Callback(self, event, key, checked)
-	raid.tank2 = raid.tanks[key]
-	SupremeRaid:PrintDebug(raid.tank2)
+	for i=1, #raid.members do
+		raid.members[i].tank2 = false
+		if raid.tanks[key].name == raid.members[i].name then
+			raid.members[i].tank2 = true
+		end
+	end	
 end
 
 function tank3Callback(self, event, key, checked)
-	raid.tank3 = raid.tanks[key]
-	SupremeRaid:PrintDebug(raid.tank3)
+	for i=1, #raid.members do
+		raid.members[i].tank3 = false
+		if raid.tanks[key].name == raid.members[i].name then
+			raid.members[i].tank3 = true
+		end
+	end	
 end
 
 function tank4Callback(self, event, key, checked)
-	raid.tank4 = raid.tanks[key]
-	SupremeRaid:PrintDebug(raid.tank4)
+	for i=1, #raid.members do
+		raid.members[i].tank4 = false
+		if raid.tanks[key].name == raid.members[i].name then
+			raid.members[i].tank4 = true
+		end
+	end	
 end
 
 function tank5Callback(self, event, key)
-	raid.tank5 = raid.tanks[key]
-	SupremeRaid:PrintDebug(raid.tank5)
+	for i=1, #raid.members do
+		raid.members[i].tank5 = false
+		if raid.tanks[key].name == raid.members[i].name then
+			raid.members[i].tank5 = true
+		end
+	end	
 end
 
 function healAssigmentAnnounceChannelSelectionCallBack(self, event, key)
@@ -715,86 +718,127 @@ end
 
 -- function that draws the widgets for the first tab
 local function DrawGroup2(container)
-	raid1.healers = SupremeRaid:GetCombatRoleMembersFromRaid("healer")
-	raid1.tanks = SupremeRaid:GetCombatRoleMembersFromRaid("tank")
+	raid.healers = SupremeRaid:GetCombatRoleMembersFromRaid("healer")
+	raid.tanks = SupremeRaid:GetCombatRoleMembersFromRaid("tank")	
+	--tablePrint(raid.healers, 1)
 
 	local tankSelector1 = AceGUI:Create("Dropdown")
 	tankSelector1:SetLabel("Tank #1")
 	tankSelector1:SetRelativeWidth(0.5)
 	tankSelector1:SetText("Select A Tank")
-	tankSelector1:SetList(DropDownList(raid1.tanks))
+	tankSelector1:SetList(DropDownList(raid.tanks))
 	tankSelector1:SetCallback("OnValueChanged", tank1Callback)
 	container:AddChild(tankSelector1)
+	for i=1, #raid.tanks do
+		if(raid.tanks[i].tank1) then
+			tankSelector1:SetValue(i)
+		break
+		end
+	end		
 
   local healerSelector1 = AceGUI:Create("Dropdown")
 	healerSelector1:SetLabel("Healer #1")
 	healerSelector1:SetRelativeWidth(0.5)
 	healerSelector1:SetText("Select Healer")
-	healerSelector1:SetList(DropDownList(raid1.healers))
+	healerSelector1:SetList(DropDownList(raid.healers))
 	healerSelector1:SetMultiselect(true)
 	healerSelector1:SetCallback("OnValueChanged", tank1HealerCallback)
 	container:AddChild(healerSelector1)
-
+	for i=1, #raid.healers do
+		healerSelector1:SetItemValue(i,raid.healers[i].tank1healer)
+	end		
+	
 	local tankSelector2 = AceGUI:Create("Dropdown")
 	tankSelector2:SetLabel("Tank #2")
 	tankSelector2:SetRelativeWidth(0.5)
 	tankSelector2:SetText("Select A Tank")
-	tankSelector2:SetList(DropDownList(raid1.tanks))
+	tankSelector2:SetList(DropDownList(raid.tanks))
 	tankSelector2:SetCallback("OnValueChanged", tank2Callback)
 	container:AddChild(tankSelector2)
+	for i=1, #raid.tanks do
+		if(raid.tanks[i].tank2) then
+			tankSelector2:SetValue(i)
+		break
+		end
+	end		
 
 	local healerSelector2 = AceGUI:Create("Dropdown")
 	healerSelector2:SetLabel("Healer #2")
 	healerSelector2:SetRelativeWidth(0.5)
 	healerSelector2:SetText("Select Healer")
 	healerSelector2:SetMultiselect(true)
-	healerSelector2:SetList(DropDownList(raid1.healers))
+	healerSelector2:SetList(DropDownList(raid.healers))
 	healerSelector2:SetCallback("OnValueChanged", tank2HealerCallback)
 	container:AddChild(healerSelector2)
-	healerSelector2:SetItemValue(2,true)
-	healerSelector2:SetItemValue(3,true)
+	for i=1, #raid.healers do
+		healerSelector2:SetItemValue(i,raid.healers[i].tank2healer)
+	end		
 
 	local tankSelector3 = AceGUI:Create("Dropdown")
 	tankSelector3:SetLabel("Tank #3")
 	tankSelector3:SetRelativeWidth(0.5)
 	tankSelector3:SetText("Select A Tank")
-	tankSelector3:SetList(DropDownList(raid1.tanks))
+	tankSelector3:SetList(DropDownList(raid.tanks))
 	tankSelector3:SetCallback("OnValueChanged", tank3Callback)
 	container:AddChild(tankSelector3)
+	for i=1, #raid.tanks do
+		if(raid.tanks[i].tank3) then
+			tankSelector3:SetValue(i)
+		break
+		end
+	end		
 
 	local healerSelector3 = AceGUI:Create("Dropdown")
 	healerSelector3:SetLabel("Healer #3")
 	healerSelector3:SetRelativeWidth(0.5)
 	healerSelector3:SetText("Select Healer")
 	healerSelector3:SetMultiselect(true)
-	healerSelector3:SetList(DropDownList(raid1.healers))
+	healerSelector3:SetList(DropDownList(raid.healers))
 	healerSelector3:SetCallback("OnValueChanged", tank3HealerCallback)
 	container:AddChild(healerSelector3)
+	for i=1, #raid.healers do
+		healerSelector3:SetItemValue(i,raid.healers[i].tank3healer)
+	end		
 
 	local tankSelector4 = AceGUI:Create("Dropdown")
 	tankSelector4:SetLabel("Tank #4")
 	tankSelector4:SetRelativeWidth(0.5)
 	tankSelector4:SetText("Select A Tank")
-	tankSelector4:SetList(DropDownList(raid1.tanks))
+	tankSelector4:SetList(DropDownList(raid.tanks))
 	tankSelector4:SetCallback("OnValueChanged", tank4Callback)
 	container:AddChild(tankSelector4)
+	for i=1, #raid.tanks do
+		if(raid.tanks[i].tank4) then
+			tankSelector4:SetValue(i)
+		break
+		end
+	end		
 
 	local healerSelector4 = AceGUI:Create("Dropdown")
 	healerSelector4:SetLabel("Healer #4")
 	healerSelector4:SetRelativeWidth(0.5)
 	healerSelector4:SetText("Select Healer")
 	healerSelector4:SetMultiselect(true)
-	healerSelector4:SetList(DropDownList(raid1.healers))
+	healerSelector4:SetList(DropDownList(raid.healers))
 	healerSelector4:SetCallback("OnValueChanged", tank4HealerCallback)
 	container:AddChild(healerSelector4)
+	for i=1, #raid.healers do
+		healerSelector4:SetItemValue(i,raid.healers[i].tank4healer)
+	end		
 
 	local tankSelector5 = AceGUI:Create("Dropdown")
 	tankSelector5:SetLabel("Tank #5")
 	tankSelector5:SetRelativeWidth(0.5)
 	tankSelector5:SetText("Select A Tank")
-	tankSelector5:SetList(DropDownList(raid1.tanks))
+	tankSelector5:SetList(DropDownList(raid.tanks))
 	tankSelector5:SetCallback("OnValueChanged", tank5Callback)
 	container:AddChild(tankSelector5)
+	for i=1, #raid.tanks do
+		if(raid.tanks[i].tank5) then
+			tankSelector5:SetValue(i)
+		break
+		end
+	end		
   
 
 	local healerSelector5 = AceGUI:Create("Dropdown")
@@ -802,9 +846,12 @@ local function DrawGroup2(container)
 	healerSelector5:SetRelativeWidth(0.5)
 	healerSelector5:SetText("Select Healer")
 	healerSelector5:SetMultiselect(true)
-	healerSelector5:SetList(DropDownList(raid1.healers))
+	healerSelector5:SetList(DropDownList(raid.healers))
 	healerSelector5:SetCallback("OnValueChanged", tank5HealerCallback)
 	container:AddChild(healerSelector5)
+	for i=1, #raid.healers do
+		healerSelector5:SetItemValue(i,raid.healers[i].tank5healer)
+	end		
 
 	local announceChannelSelector = AceGUI:Create("Dropdown")
 	announceChannelSelector:SetLabel("Announce Heal Assignment to:")
@@ -971,11 +1018,8 @@ local function SelectGroup(container, event, group)
 end
 
 function SupremeRaid:CreateFrame()
-	-- resetRaidInformation()
 	SupremeRaid:GetRaidMembers()
-	raid.tanks = mergeTables(raid.warriors, raid.druids)
-	raid.healers = mergeTables(raid.priests, raid.druids, raid.shamans)
-
+	tablePrint(raid)
 	local frame = AceGUI:Create("Frame")
 	frame:SetTitle("Supreme Raid Helper")
 	frame:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
