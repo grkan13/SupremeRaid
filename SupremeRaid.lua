@@ -10,32 +10,16 @@ local playerGUID = UnitGUID("player")
 local _, playerClass = UnitClass("player")
 local playerName = UnitName("player")
 local playerRaidRole = nil
-local skullListSelector, crossListSelector, squareListSelector, moonListSelector, triangleListSelector, diamondListSelector, circleListSelector, starListSelector
-local healers1Table = nil
+local skullListSelector, crossListSelector, squareListSelector, moonListSelector,
+triangleListSelector, diamondListSelector, circleListSelector, starListSelector
 local selectedTab = "tab2"
 
 local raid = {}
 raid.members = {}
---[[raid.warriors = {"Kagedorf", "Drakoh"}
-raid.priests = {"Pio", "Chimble", "Macewindu"}
-raid.shamans = {"Xpace", "HungrySalami"}
-raid.druids = {"Cowhileonard", "Dwigthcoward"}
-raid.mages = {"Rekks", "Murdera"}
-raid.rogues = {"Aagrim", "Cidolbones"}
-raid.hunters = {"Satchmaux", "Servicer"}
-raid.warlocks = {"Majutsu", "Lowkey"}
 raid.healers = {}
 raid.tanks = {}
-raid.tank1 = nil
-raid.tank2 = nil
-raid.tank2healers = {}
-raid.tank3 = nil
-raid.tank3healers = {}
-raid.tank4 = nil
-raid.tank4healers = {}
-raid.tank5 = nil
-raid.tank5healers = {}
-raid.filteredClassList = {}
+raid.filteredMemberList = {}
+--[[
 raid.skullPlayers = {}
 raid.crossPlayers = {}
 raid.squarePlayers = {}
@@ -66,18 +50,26 @@ function addmember(name,class)
   member.tank5healer = false
   member.targetskull = false
   member.targetcross = false
-  table.insert(raid1.members, member)
+  member.raidIcon = {}
+  table.insert(raid.members, member)
 end
 
-addmember("Kagedorf", "warrior")
-addmember("Drakoh", "warrior")
-addmember("Pio", "priest")
-addmember("Chimble", "priest")
-addmember("Xpace", "shaman")
-addmember("Hungrysalami", "shaman")
-addmember("Cow", "druid")
-addmember("Maruki", "druid")
-addmember("Murdera", "mage")
+addmember("Warrior1", "Warrior")
+addmember("Warrior2", "Warrior")
+addmember("Priest1", "Priest")
+addmember("Priest2", "Priest")
+addmember("Shaman1", "Shaman")
+addmember("Shaman2", "Shaman")
+addmember("Druid1", "Druid")
+addmember("Druid2", "Druid")
+addmember("Mage1", "Mage")
+addmember("Mage2", "Mage")
+addmember("Rogue1", "Rogue")
+addmember("Rogue2", "Rogue")
+addmember("Hunter1", "Hunter")
+addmember("Hunter2", "Hunter")
+addmember("Warlock1", "Warlock")
+addmember("Warlock2", "Warlock")
 
 
 function tablePrint (tbl, indent)
@@ -96,7 +88,8 @@ function tablePrint (tbl, indent)
 end
 tablePrint(raid)
 
-SupremeRaid = LibStub("AceAddon-3.0"):NewAddon("SupremeRaid", "AceConsole-3.0", "AceEvent-3.0", "AceComm-3.0", "AceTimer-3.0")
+SupremeRaid = LibStub("AceAddon-3.0"):NewAddon("SupremeRaid", "AceConsole-3.0",
+"AceEvent-3.0", "AceComm-3.0", "AceTimer-3.0")
 SupremeRaid.Version = GetAddOnMetadata(addonName, 'Version')
 SupremeRaid.Author = GetAddOnMetadata(addonName, "Author")
 
@@ -109,11 +102,12 @@ SupremeRaid.DrinkAnnouncementChannels = {
 }
 
 SupremeRaid.ClassList = {
-	"priest", "shaman", "druid", "warrior", "hunter", "mage", "warlock", "rogue"
+	"Druid", "Hunter", "Mage", "Priest", "Rogue", "Shaman", "Warlock", "Warrior"
 }
 
 SupremeRaid.RaidIconList = {
-	"Sk"
+	star = "{rt1}", circle = "{rt2}", diamond = "{rt3}", triangle = "{rt4}",
+  moon = "{rt5}", square = "{rt6}", cross = "{rt7}", skull = "{rt8}"
 }
 
 SupremeRaid.YourAssignedTank = nil
@@ -156,10 +150,8 @@ function SupremeRaid:OnInitialize()
 	--self.db.RegisterCallback(self, "OnProfileReset", "ResetProfile")
 	--self.db.RegisterCallback(self, "OnProfileChanged", "HandleProfileChanges")
 	--self.db.RegisterCallback(self, "OnProfileCopied", "HandleProfileChanges")
-	SupremeRaid:EnableDebugPrint(false);
-
+	SupremeRaid:EnableDebugPrint(true);
 	SupremeRaid:CreateFrame()
-
 end
 
 function SupremeRaid:OnEnable()
@@ -172,7 +164,6 @@ function SupremeRaid:SlashCommandHandler(input)
   -- Process the slash command ('input' contains whatever follows the slash command)
 	SupremeRaid:CreateFrame();
 end
-
 SupremeRaid:RegisterChatCommand("sup", "SlashCommandHandler")
 
 function SupremeRaid:OnUnitAuraEvent(eventName, unitTarget)
@@ -194,7 +185,7 @@ function SupremeRaid:OnUnitAuraEvent(eventName, unitTarget)
 						end
 						message = string.gsub(message, "$tn", SupremeRaid.YourAssignedTank)
 						SupremeRaid:PrintDebug(message)
-						SupremeRaid:SendMessageToChat(message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetDrinkAnnounceChannelIndex()))
+						SendMessageToChat(message, GetChannelNameFromIndex(SupremeRaid:GetDrinkAnnounceChannelIndex()))
 						drinkingStatus  = true;
 					end
 				end
@@ -203,7 +194,7 @@ function SupremeRaid:OnUnitAuraEvent(eventName, unitTarget)
 				-- Finished drinking but hasn't announced that yet
 			if(i == 40 and drinkingStatus  == true) then
 				message = "Finished Drinking"
-				SupremeRaid:SendMessageToChat(message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetDrinkAnnounceChannelIndex()))
+				SendMessageToChat(message, GetChannelNameFromIndex(SupremeRaid:GetDrinkAnnounceChannelIndex()))
 				SupremeRaid:PrintDebug(message)
 				drinkingStatus  = false
 			end
@@ -211,11 +202,11 @@ function SupremeRaid:OnUnitAuraEvent(eventName, unitTarget)
 	end
 end
 
-function SupremeRaid:GetChannelNameFromIndex(index)
+local function GetChannelNameFromIndex(index)
 	return SupremeRaid.AnnouncementChannels[index]
 end
 
-function SupremeRaid:GetRaidMembers()
+local function GetRaidMembers()
 	local num = GetNumGroupMembers()
 	 for raidIndex = 1, num do
  			local member = {}
@@ -229,32 +220,20 @@ function SupremeRaid:GetRaidMembers()
 			member.tank3healer = false
 			member.tank4healer = false
 			member.tank5healer = false
+			member.tank1 = false
+			member.tank2 = false
+			member.tank3 = false
+			member.tank4 = false
+			member.tank5 = false
+      member.raidIcon = {}
 		if name == playerName then
 			playerRaidRole = role;
 		end
 		table.insert(raid.members, member)
-		--[[if (class == "Warrior") then
-			table.insert(raid.warriors, name)
-		elseif (class == "Priest") then
-			table.insert(raid.priests, name)
-		elseif (class == "Shaman") then
-			table.insert(raid.shamans, name)
-		elseif (class == "Druid") then
-			table.insert(raid.druids, name)
-		elseif (class == "Rogue") then
-			table.insert(raid.rogues, name)
-		elseif (class == "Warlock") then
-			table.insert(raid.warlocks, name)
-		elseif (class == "Mage") then
-			table.insert(raid.mages, name)
-		elseif (class == "Hunter") then
-			table.insert(raid.hunters, name)
-		end
-		]]
 	end
 end
 
-function SupremeRaid:GetClassMembersFromRaid(class)
+local function GetClassMembersFromRaid(class)
 	local memberTable = {}
 	for i=1,#raid.members do
 		if(raid.members[i].class == class) then
@@ -264,18 +243,18 @@ function SupremeRaid:GetClassMembersFromRaid(class)
 	return memberTable
 end
 
-function SupremeRaid:GetCombatRoleMembersFromRaid(combatRole)
+local function GetCombatRoleMembersFromRaid(combatRole)
 	local combatRoleTable = {}
 	if(combatRole == "healer") then
 		for i=1,#raid.members do
-			if(raid.members[i].class == "priest" or raid.members[i].class == "shaman" or raid.members[i].class == "druid") then
+			if(raid.members[i].class == "Priest" or raid.members[i].class == "Shaman" or raid.members[i].class == "Druid") then
 				table.insert(combatRoleTable, raid.members[i])
 			end
 		end
 	end
 	if(combatRole == "tank") then
 		for i=1,#raid.members do
-			if(raid.members[i].class == "warrior" or raid.members[i].class == "druid") then
+			if(raid.members[i].class == "Warrior" or raid.members[i].class == "Druid") then
 				table.insert(combatRoleTable, raid.members[i])
 			end
 		end
@@ -283,7 +262,7 @@ function SupremeRaid:GetCombatRoleMembersFromRaid(combatRole)
 	return combatRoleTable
 end
 
-function DropDownList(mainList)
+local function DropDownList(mainList)
   local simpleList = {}
   for i=1,#mainList do
     table.insert(simpleList, mainList[i].name)
@@ -293,10 +272,10 @@ end
 
 function targetPlayerSelectorCallBackHandler(key, checked, selectedGroup)
 	if(checked) then
-		table.insert(selectedGroup, raid.filteredClassList[key])
+		table.insert(selectedGroup, raid.filteredMemberList[key])
 	else
 		for i=1,#selectedGroup do
-			if raid.filteredClassList[key] == selectedGroup[i] then
+			if raid.filteredMemberList[key] == selectedGroup[i] then
 				table.remove(selectedGroup, i)
 				break
 			end
@@ -305,8 +284,24 @@ function targetPlayerSelectorCallBackHandler(key, checked, selectedGroup)
 end
 
 function skullSelectorCallback(self, event, key, checked)
-	targetPlayerSelectorCallBackHandler(key,checked, raid.skullPlayers)
-	SupremeRaid:PrintDebug(table.concat(raid.skullPlayers,", "))
+  for i=1, #raid.members do
+    if raid.filteredMemberList[key] == raid.members[i].name then
+      if checked then
+        table.insert(raid.members[i].raidIcon, {skull = "{rt8}"})
+      else
+        table.remove(raid.members[i].raidIcon, skull)
+        --[[for j=1, #raid.members[i].raidIcon do
+          if(SupremeRaid.RaidIconList.skull == raid.members[i].raidIcon[j]) then
+
+            table.remove(raid.members[i].raidIcon, j)
+            break
+          end
+        end]]
+      end
+      break
+    end
+  end
+  tablePrint(raid,1)
 end
 
 function crossSelectorCallback(self, event, key, checked)
@@ -347,41 +342,41 @@ end
 function tank1HealerCallback(self, event, key, checked)
 	for i=1, #raid.members do
 		if raid.healers[key].name == raid.members[i].name then
-			raid.members[i].tank1healer = checked			
+			raid.members[i].tank1healer = checked
 		end
-	end	
+	end
 end
 
 function tank2HealerCallback(self, event, key, checked)
 	for i=1, #raid.members do
 		if raid.healers[key].name == raid.members[i].name then
-			raid.members[i].tank2healer = checked			
+			raid.members[i].tank2healer = checked
 		end
-	end	
+	end
 end
 
 function tank3HealerCallback(self, event, key, checked)
 	for i=1, #raid.members do
 		if raid.healers[key].name == raid.members[i].name then
-			raid.members[i].tank3healer = checked			
+			raid.members[i].tank3healer = checked
 		end
-	end	
+	end
 end
 
 function tank4HealerCallback(self, event, key, checked)
 	for i=1, #raid.members do
 		if raid.healers[key].name == raid.members[i].name then
-			raid.members[i].tank4healer = checked			
+			raid.members[i].tank4healer = checked
 		end
-	end	
+	end
 end
 
 function tank5HealerCallback(self, event, key, checked)
 	for i=1, #raid.members do
 		if raid.healers[key].name == raid.members[i].name then
-			raid.members[i].tank5healer = checked			
+			raid.members[i].tank5healer = checked
 		end
-	end	
+	end
 end
 
 function tank1Callback(self, event, key, checked)
@@ -390,7 +385,7 @@ function tank1Callback(self, event, key, checked)
 		if raid.tanks[key].name == raid.members[i].name then
 			raid.members[i].tank1 = true
 		end
-	end	
+	end
 end
 
 function tank2Callback(self, event, key, checked)
@@ -399,7 +394,7 @@ function tank2Callback(self, event, key, checked)
 		if raid.tanks[key].name == raid.members[i].name then
 			raid.members[i].tank2 = true
 		end
-	end	
+	end
 end
 
 function tank3Callback(self, event, key, checked)
@@ -408,7 +403,7 @@ function tank3Callback(self, event, key, checked)
 		if raid.tanks[key].name == raid.members[i].name then
 			raid.members[i].tank3 = true
 		end
-	end	
+	end
 end
 
 function tank4Callback(self, event, key, checked)
@@ -417,7 +412,7 @@ function tank4Callback(self, event, key, checked)
 		if raid.tanks[key].name == raid.members[i].name then
 			raid.members[i].tank4 = true
 		end
-	end	
+	end
 end
 
 function tank5Callback(self, event, key)
@@ -426,7 +421,7 @@ function tank5Callback(self, event, key)
 		if raid.tanks[key].name == raid.members[i].name then
 			raid.members[i].tank5 = true
 		end
-	end	
+	end
 end
 
 function healAssigmentAnnounceChannelSelectionCallBack(self, event, key)
@@ -486,7 +481,7 @@ function announceHealAssigment()
 	end
 	if tank1Message ~= nil then
 		SupremeRaid:PrintDebug(tank1Message)
-		SupremeRaid:SendMessageToChat(tank1Message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(tank1Message, GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
 	end
 	if raid.tank2 == nil then
 		SupremeRaid:Print("Assign Tank 2")
@@ -497,7 +492,7 @@ function announceHealAssigment()
 	end
 	if tank2Message ~= nil then
 		SupremeRaid:PrintDebug(tank2Message)
-		SupremeRaid:SendMessageToChat(tank2Message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(tank2Message, GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
 	end
 	if raid.tank3 == nil then
 		SupremeRaid:Print("Assign Tank 3")
@@ -508,7 +503,7 @@ function announceHealAssigment()
 	end
 	if tank3Message ~= nil then
 		SupremeRaid:PrintDebug(tank3Message)
-		SupremeRaid:SendMessageToChat(tank3Message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(tank3Message, GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
 	end
 	if raid.tank4 == nil then
 		SupremeRaid:Print("Assign Tank 4")
@@ -519,7 +514,7 @@ function announceHealAssigment()
 	end
 	if tank4Message ~= nil then
 		SupremeRaid:PrintDebug(tank4Message)
-		SupremeRaid:SendMessageToChat(tank4Message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(tank4Message, GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
 	end
 	if raid.tank5 == nil then
 		SupremeRaid:Print("Assign Tank 5")
@@ -530,12 +525,13 @@ function announceHealAssigment()
 	end
 	if tank5Message ~= nil then
 		SupremeRaid:PrintDebug(tank5Message)
-		SupremeRaid:SendMessageToChat(tank5Message, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(tank5Message, GetChannelNameFromIndex(SupremeRaid:GetHealAssigmentAnnounceChannelIndex()))
 	end
 end
 
 function announceTargetAssigment()
-	local skullMessage, crossMessage, squareMessage, moonMessage, triangleMessage, diamondMessage, circleMessage, starMessage
+	local skullMessage, crossMessage, squareMessage, moonMessage,
+  triangleMessage, diamondMessage, circleMessage, starMessage
 	if raid.skullPlayers == nil or #raid.skullPlayers == 0 then
 		SupremeRaid:Print("Assign Players to SKULL")
 	else
@@ -543,7 +539,7 @@ function announceTargetAssigment()
 	end
 	if skullMessage ~= nil then
 		SupremeRaid:PrintDebug(skullMessage)
-		SupremeRaid:SendMessageToChat(skullMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(skullMessage, GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.crossPlayers == nil  or #raid.crossPlayers == 0 then
 		SupremeRaid:Print("Assign Players to CROSS")
@@ -552,7 +548,7 @@ function announceTargetAssigment()
 	end
 	if crossMessage ~= nil then
 		SupremeRaid:PrintDebug(crossMessage)
-		SupremeRaid:SendMessageToChat(crossMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(crossMessage, GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.squarePlayers == nil or #raid.squarePlayers == 0 then
 		SupremeRaid:Print("Assign Players to SQUARE")
@@ -561,7 +557,7 @@ function announceTargetAssigment()
 	end
 	if squareMessage ~= nil then
 		SupremeRaid:PrintDebug(squareMessage)
-		SupremeRaid:SendMessageToChat(squareMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(squareMessage, GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.moonPlayers == nil or #raid.moonPlayers == 0 then
 		SupremeRaid:Print("Assign Players to MOON")
@@ -570,7 +566,7 @@ function announceTargetAssigment()
 	end
 	if moonMessage ~= nil then
 		SupremeRaid:PrintDebug(moonMessage)
-		SupremeRaid:SendMessageToChat(moonMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(moonMessage, GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.trianglePlayers == nil or #raid.trianglePlayers == 0 then
 		SupremeRaid:Print("Assign Players to TRIANGLE")
@@ -579,7 +575,7 @@ function announceTargetAssigment()
 	end
 	if triangleMessage ~= nil then
 		SupremeRaid:PrintDebug(triangleMessage)
-		SupremeRaid:SendMessageToChat(triangleMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(triangleMessage, GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.diamondPlayers == nil or #raid.diamondPlayers == 0 then
 		SupremeRaid:Print("Assign Players to DIAMOND")
@@ -588,7 +584,7 @@ function announceTargetAssigment()
 	end
 	if diamondMessage ~= nil then
 		SupremeRaid:PrintDebug(diamondMessage)
-		SupremeRaid:SendMessageToChat(diamondMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(diamondMessage, GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.circlePlayers == nil or #raid.circlePlayers == 0 then
 		SupremeRaid:Print("Assign Players to CIRCLE")
@@ -597,7 +593,7 @@ function announceTargetAssigment()
 	end
 	if circleMessage ~= nil  then
 		SupremeRaid:PrintDebug(circleMessage)
-		SupremeRaid:SendMessageToChat(circleMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
+		SendMessageToChat(circleMessage, GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 	if raid.starPlayers == nil or #raid.starPlayers == 0 then
 		SupremeRaid:Print("Assign Players to STAR")
@@ -606,56 +602,48 @@ function announceTargetAssigment()
 	end
 	if starMessage ~= nil then
 		SupremeRaid:PrintDebug(starMessage)
-		SupremeRaid:SendMessageToChat(starMessage, SupremeRaid:GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
-	end
-end
-
-function getNecessaryClass (classKey)
-	if classKey == "priest" then
-		return raid.priests
-	elseif classKey == "shaman" then
-		return raid.shamans
-	elseif classKey == "druid" then
-		return raid.druids
-	elseif classKey == "warrior" then
-		return raid.warriors
-	elseif classKey == "rogue" then
-		return raid.rogues
-	elseif classKey == "hunter" then
-		return raid.hunters
-	elseif classKey == "mage" then
-		return raid.mages
-	elseif classKey == "warlock" then
-		return raid.warlocks
+		SendMessageToChat(starMessage, GetChannelNameFromIndex(SupremeRaid:GetTargetAssigmentAnnounceChannelIndex()))
 	end
 end
 
 function classFilterCallBack(self, event, key, checked)
+  local class = SupremeRaid.ClassList[key]
 	if checked then
-		table.insert(SupremeRaid.SelectedClassesToFilter, SupremeRaid.ClassList[key])
-		raid.filteredClassList = mergeTables(raid.filteredClassList, getNecessaryClass(SupremeRaid.ClassList[key]))
+		table.insert(SupremeRaid.SelectedClassesToFilter, class)
 	elseif  SupremeRaid.SelectedClassesToFilter ~= nil then
 		for i=1,#SupremeRaid.SelectedClassesToFilter do
-			if SupremeRaid.ClassList[key] == SupremeRaid.SelectedClassesToFilter[i] then
+			if class == SupremeRaid.SelectedClassesToFilter[i] then
 				table.remove(SupremeRaid.SelectedClassesToFilter, i)
 				break
 			end
 		end
-		raid.filteredClassList = {}
-		for i=1,#SupremeRaid.SelectedClassesToFilter do
-			raid.filteredClassList = mergeTables(raid.filteredClassList, getNecessaryClass(SupremeRaid.SelectedClassesToFilter[i]))
-		end
 	end
+  for i=1,#raid.members do
+    if raid.members[i].class == class then
+      if checked then
+        table.insert(raid.filteredMemberList, raid.members[i].name)
+      else
+        raid.members[i].raidIcon = nil
+          print(raid.members[i].name)
+        for j=1, #raid.filteredMemberList do
+          if raid.filteredMemberList[j] == raid.members[i].name then
+            table.remove(raid.filteredMemberList, j)
+            break
+          end
+        end
+      end
+    end
+  end
 	SupremeRaid:PrintDebug(table.concat(SupremeRaid.SelectedClassesToFilter,", "))
-	SupremeRaid:PrintDebug(table.concat(raid.filteredClassList,", "))
-	skullListSelector:SetList(raid.filteredClassList)
-	crossListSelector:SetList(raid.filteredClassList)
-	squareListSelector:SetList(raid.filteredClassList)
-	moonListSelector:SetList(raid.filteredClassList)
-	triangleListSelector:SetList(raid.filteredClassList)
-	diamondListSelector:SetList(raid.filteredClassList)
-	circleListSelector:SetList(raid.filteredClassList)
-	starListSelector:SetList(raid.filteredClassList)
+	SupremeRaid:PrintDebug(table.concat(raid.filteredMemberList,", "))
+	skullListSelector:SetList(raid.filteredMemberList)
+	crossListSelector:SetList(raid.filteredMemberList)
+	squareListSelector:SetList(raid.filteredMemberList)
+	moonListSelector:SetList(raid.filteredMemberList)
+	triangleListSelector:SetList(raid.filteredMemberList)
+	diamondListSelector:SetList(raid.filteredMemberList)
+	circleListSelector:SetList(raid.filteredMemberList)
+	starListSelector:SetList(raid.filteredMemberList)
 end
 
 -- function that draws the widgets for the second tab
@@ -718,8 +706,8 @@ end
 
 -- function that draws the widgets for the first tab
 local function DrawGroup2(container)
-	raid.healers = SupremeRaid:GetCombatRoleMembersFromRaid("healer")
-	raid.tanks = SupremeRaid:GetCombatRoleMembersFromRaid("tank")	
+	raid.healers = GetCombatRoleMembersFromRaid("healer")
+	raid.tanks = GetCombatRoleMembersFromRaid("tank")
 	--tablePrint(raid.healers, 1)
 
 	local tankSelector1 = AceGUI:Create("Dropdown")
@@ -734,7 +722,7 @@ local function DrawGroup2(container)
 			tankSelector1:SetValue(i)
 		break
 		end
-	end		
+	end
 
   local healerSelector1 = AceGUI:Create("Dropdown")
 	healerSelector1:SetLabel("Healer #1")
@@ -746,8 +734,8 @@ local function DrawGroup2(container)
 	container:AddChild(healerSelector1)
 	for i=1, #raid.healers do
 		healerSelector1:SetItemValue(i,raid.healers[i].tank1healer)
-	end		
-	
+	end
+
 	local tankSelector2 = AceGUI:Create("Dropdown")
 	tankSelector2:SetLabel("Tank #2")
 	tankSelector2:SetRelativeWidth(0.5)
@@ -760,7 +748,7 @@ local function DrawGroup2(container)
 			tankSelector2:SetValue(i)
 		break
 		end
-	end		
+	end
 
 	local healerSelector2 = AceGUI:Create("Dropdown")
 	healerSelector2:SetLabel("Healer #2")
@@ -772,7 +760,7 @@ local function DrawGroup2(container)
 	container:AddChild(healerSelector2)
 	for i=1, #raid.healers do
 		healerSelector2:SetItemValue(i,raid.healers[i].tank2healer)
-	end		
+	end
 
 	local tankSelector3 = AceGUI:Create("Dropdown")
 	tankSelector3:SetLabel("Tank #3")
@@ -786,7 +774,7 @@ local function DrawGroup2(container)
 			tankSelector3:SetValue(i)
 		break
 		end
-	end		
+	end
 
 	local healerSelector3 = AceGUI:Create("Dropdown")
 	healerSelector3:SetLabel("Healer #3")
@@ -798,7 +786,7 @@ local function DrawGroup2(container)
 	container:AddChild(healerSelector3)
 	for i=1, #raid.healers do
 		healerSelector3:SetItemValue(i,raid.healers[i].tank3healer)
-	end		
+	end
 
 	local tankSelector4 = AceGUI:Create("Dropdown")
 	tankSelector4:SetLabel("Tank #4")
@@ -812,7 +800,7 @@ local function DrawGroup2(container)
 			tankSelector4:SetValue(i)
 		break
 		end
-	end		
+	end
 
 	local healerSelector4 = AceGUI:Create("Dropdown")
 	healerSelector4:SetLabel("Healer #4")
@@ -824,7 +812,7 @@ local function DrawGroup2(container)
 	container:AddChild(healerSelector4)
 	for i=1, #raid.healers do
 		healerSelector4:SetItemValue(i,raid.healers[i].tank4healer)
-	end		
+	end
 
 	local tankSelector5 = AceGUI:Create("Dropdown")
 	tankSelector5:SetLabel("Tank #5")
@@ -838,8 +826,8 @@ local function DrawGroup2(container)
 			tankSelector5:SetValue(i)
 		break
 		end
-	end		
-  
+	end
+
 
 	local healerSelector5 = AceGUI:Create("Dropdown")
 	healerSelector5:SetLabel("Healer #5")
@@ -851,7 +839,7 @@ local function DrawGroup2(container)
 	container:AddChild(healerSelector5)
 	for i=1, #raid.healers do
 		healerSelector5:SetItemValue(i,raid.healers[i].tank5healer)
-	end		
+	end
 
 	local announceChannelSelector = AceGUI:Create("Dropdown")
 	announceChannelSelector:SetLabel("Announce Heal Assignment to:")
@@ -887,10 +875,10 @@ local function DrawGroup3(container)
 	container:AddChild(skullText)
 
 	skullListSelector = AceGUI:Create("Dropdown")
-	skullListSelector:SetLabel("Select Classes to Filter")
+	skullListSelector:SetLabel("Select Player to Assign")
 	skullListSelector:SetRelativeWidth(0.79)
 	skullListSelector:SetText("Select Classes")
-	skullListSelector:SetList(raid.filteredClassList)
+	skullListSelector:SetList(raid.filteredMemberList)
 	skullListSelector:SetMultiselect(true)
 	skullListSelector:SetCallback("OnValueChanged", skullSelectorCallback)
 	container:AddChild(skullListSelector)
@@ -901,9 +889,10 @@ local function DrawGroup3(container)
 	container:AddChild(crossText)
 
 	crossListSelector = AceGUI:Create("Dropdown")
-	crossListSelector:SetLabel("Select Classes to Filter")
+	crossListSelector:SetLabel("Select Player to Assign")
 	crossListSelector:SetRelativeWidth(0.79)
 	crossListSelector:SetText("Select Classes")
+	crossListSelector:SetList(raid.filteredMemberList)
 	crossListSelector:SetMultiselect(true)
 	crossListSelector:SetCallback("OnValueChanged", crossSelectorCallback)
 	container:AddChild(crossListSelector)
@@ -914,9 +903,10 @@ local function DrawGroup3(container)
 	container:AddChild(squareText)
 
 	squareListSelector = AceGUI:Create("Dropdown")
-	squareListSelector:SetLabel("Select Classes to Filter")
+	squareListSelector:SetLabel("Select Player to Assign")
 	squareListSelector:SetRelativeWidth(0.79)
 	squareListSelector:SetText("Select Classes")
+	squareListSelector:SetList(raid.filteredMemberList)
 	squareListSelector:SetMultiselect(true)
 	squareListSelector:SetCallback("OnValueChanged", squareSelectorCallback)
 	container:AddChild(squareListSelector)
@@ -927,9 +917,10 @@ local function DrawGroup3(container)
 	container:AddChild(moonText)
 
 	moonListSelector = AceGUI:Create("Dropdown")
-	moonListSelector:SetLabel("Select Classes to Filter")
+	moonListSelector:SetLabel("Select Player to Assign")
 	moonListSelector:SetRelativeWidth(0.79)
 	moonListSelector:SetText("Select Classes")
+	moonListSelector:SetList(raid.filteredMemberList)
 	moonListSelector:SetMultiselect(true)
 	moonListSelector:SetCallback("OnValueChanged", moonSelectorCallback)
 	container:AddChild(moonListSelector)
@@ -940,9 +931,10 @@ local function DrawGroup3(container)
 	container:AddChild(triangleText)
 
 	triangleListSelector = AceGUI:Create("Dropdown")
-	triangleListSelector:SetLabel("Select Classes to Filter")
+	triangleListSelector:SetLabel("Select Player to Assign")
 	triangleListSelector:SetRelativeWidth(0.79)
 	triangleListSelector:SetText("Select Classes")
+	triangleListSelector:SetList(raid.filteredMemberList)
 	triangleListSelector:SetMultiselect(true)
 	triangleListSelector:SetCallback("OnValueChanged", triangleSelectorCallback)
 	container:AddChild(triangleListSelector)
@@ -953,11 +945,12 @@ local function DrawGroup3(container)
 	container:AddChild(diamondText)
 
 	diamondListSelector = AceGUI:Create("Dropdown")
-	diamondListSelector:SetLabel("Select Classes to Filter")
+	diamondListSelector:SetLabel("Select Player to Assign")
 	diamondListSelector:SetRelativeWidth(0.79)
 	diamondListSelector:SetText("Select Classes")
+	diamondListSelector:SetList(raid.filteredMemberList)
 	diamondListSelector:SetMultiselect(true)
-	crossListSelector:SetCallback("OnValueChanged", crossSelectorCallback)
+	diamondListSelector:SetCallback("OnValueChanged", crossSelectorCallback)
 	container:AddChild(diamondListSelector)
 
 	local circleText = AceGUI:Create("Label")
@@ -966,9 +959,10 @@ local function DrawGroup3(container)
 	container:AddChild(circleText)
 
 	circleListSelector = AceGUI:Create("Dropdown")
-	circleListSelector:SetLabel("Select Classes to Filter")
+	circleListSelector:SetLabel("Select Player to Assign")
 	circleListSelector:SetRelativeWidth(0.79)
 	circleListSelector:SetText("Select Classes")
+	circleListSelector:SetList(raid.filteredMemberList)
 	circleListSelector:SetMultiselect(true)
 	circleListSelector:SetCallback("OnValueChanged", circleSelectorCallback)
 	container:AddChild(circleListSelector)
@@ -979,9 +973,10 @@ local function DrawGroup3(container)
 	container:AddChild(starText)
 
 	starListSelector = AceGUI:Create("Dropdown")
-	starListSelector:SetLabel("Select Classes to Filter")
+	starListSelector:SetLabel("Select Player to Assign")
 	starListSelector:SetRelativeWidth(0.79)
 	starListSelector:SetText("Select Classes")
+	starListSelector:SetList(raid.filteredMemberList)
 	starListSelector:SetMultiselect(true)
 	starListSelector:SetCallback("OnValueChanged", starSelectorCallback)
 	container:AddChild(starListSelector)
@@ -1018,7 +1013,7 @@ local function SelectGroup(container, event, group)
 end
 
 function SupremeRaid:CreateFrame()
-	SupremeRaid:GetRaidMembers()
+	GetRaidMembers()
 	tablePrint(raid)
 	local frame = AceGUI:Create("Frame")
 	frame:SetTitle("Supreme Raid Helper")
@@ -1054,24 +1049,7 @@ function SupremeRaid:CreateFrame()
 	frame:AddChild(tab)
 end
 
-function mergeTables(table1, table2, table3)
-
-	local table = {unpack(table1)}
-	if table2 ~= nill then
-		for i = 1, #table2 do
-			table[#table1+i] = table2[i]
-		end
-	end
-	local nextTable = {unpack(table)}
-	if table3 ~= nil then
-		for i = 1, #table3 do
-			nextTable[#table+i] = table3[i]
-		end
-	end
-	return nextTable
-end
-
-function SupremeRaid:SendMessageToChat(message, channelName)
+function SendMessageToChat(message, channelName)
 	if channelName == "say" or channelName == "yell" or channelName == "raid" or channelName "party" or channelName == "raid_warning" then
 		SendChatMessage(message, channelName)
 	else
@@ -1083,7 +1061,7 @@ function SupremeRaid:SendMessageToChat(message, channelName)
 end
 
 function SupremeRaid:PrintDebug(...)
-	if SupremeRaid.IsDebugPrintEnabled() then
+	if SupremeRaid:IsDebugPrintEnabled() then
 		SupremeRaid:Print(...)
 	end
 end
